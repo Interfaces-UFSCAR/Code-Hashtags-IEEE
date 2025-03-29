@@ -1,8 +1,11 @@
+from corpus import get_script_path, ensure_path_exists
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
+from argparse import ArgumentParser
+from os.path import join
 
 
 def create_plot(data: pd.DataFrame, title: str, path: str, candidate: str):
@@ -71,20 +74,47 @@ def create_plot(data: pd.DataFrame, title: str, path: str, candidate: str):
 
     plt.tick_params(axis='x', labelsize=18)  
     plt.tick_params(axis='y', labelsize=18)
+    ensure_path_exists(path)
     plt.savefig(path, format='png')
 
 def main():
-    bolsonaro_scores = pd.read_csv('./usuarios_bolsonaro_classificados.csv')
-    lula_scores = pd.read_csv('./usuarios_lula_classificados.csv')
+    parser = ArgumentParser(
+      description="A script to generate plots about the user classification distributions, for visualization"
+    )
+    parser.add_argument(
+      "classified_users_lula",
+      type=str,
+      help="Input file path for the classified users regarding candidate Lula (csv)"
+    )
+    parser.add_argument(
+      "classified_users_bolsonaro",
+      type=str,
+      help="Input file path for the classified users regarding candidate Bolsonaro (csv)"
+    )
+    parser.add_argument(
+      "output_file_path_lula",
+      type=str,
+      help="Output file path for the user classification plot regarding candidate Lula (png)"
+    )
+    parser.add_argument(
+      "output_file_path_bolsonaro",
+      type=str,
+      help="Output file path for the user classification plot regarding candidate Bolsonaro (png)"
+    )
+    args = parser.parse_args()
+
+    bolsonaro_scores = pd.read_csv(args.classified_users_bolsonaro)
+    lula_scores = pd.read_csv(args.classified_users_lula)
 
     create_plot(title = 'Distribution of Users Ideology Score(Query Bolsonaro)',
                 data = bolsonaro_scores,
-                path = "./bolsonaro_users_scores.png",
+                path = join(get_script_path(), args.output_file_path_bolsonaro),
                 candidate = 'Bolsonaro')
     
     create_plot(title = 'Distribution of Users Ideology Score(Query Lula)', 
                 data = lula_scores, 
-                path = "./lula_users_scores.png", 
+                path = join(get_script_path(), args.output_file_path_lula), 
                 candidate = 'Lula')
         
-main()
+if __name__ == "__main__":
+    main()
