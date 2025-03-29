@@ -90,6 +90,14 @@ lula_labeled_hashtags (**csv**); bolsonaro_labeled_hashtags (**csv**); lula_clas
 
 **plots.py** is used to generate the plots showing the distribultions resultant of the user classification process.
 
+input args: **classified_users_lula**, **classified_users_bolsonaro**;
+
+output args: **output_file_path_lula**, **output_file_path_bolsonaro**;
+
+**Expected and resulting file types:**
+
+classified_users_lula (**csv**); classified_users_bolsonaro (**csv**); output_file_path_lula (**png**); output_file_path_bolsonaro (**png**)
+
 ---
 
 ## user_ideology_wordclouds.py
