@@ -1,8 +1,17 @@
 import os, sys
 from collections.abc import Iterable
+from pathlib import Path
 
 def get_script_path():
     return os.path.dirname(os.path.realpath(sys.argv[0])) + '\\'
+
+def ensure_path_exists(path_str):
+    path = Path(path_str)
+
+    if path_str.endswith(os.sep) or path_str.endswith("/"):
+        path.mkdir(parents=True, exist_ok=True)
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
 
 def resolve_hierarchical_path(path, starting_path_vec=[]):
     paths = []

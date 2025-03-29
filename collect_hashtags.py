@@ -1,9 +1,10 @@
-from corpus import aggregate_from_corpus, get_script_path
+from corpus import aggregate_from_corpus, get_script_path, ensure_path_exists
 import pandas as pd, numpy as np
 from scipy.sparse import csr_matrix, triu, tril
 from scipy.sparse.csgraph import connected_components
 from serialization import to_indexed_sparse
-from os import path
+from argparse import ArgumentParser
+from os.path import join
 
 def collect_tags(path):
     new_hashtags = pd.read_parquet(path, columns=['id', 'hashtags'])
@@ -46,7 +47,7 @@ def generate_co_occurrence_matrix(hashtags_with_groupid, prelabeled_hashtags_fil
     print(f'Done with matrix operations. Generated matrix of size {len(r)}')
     return coocc_mat, r
 
-def collect_hashtags(sub_corpus, hashtags_file_name):
+def collect_hashtags(sub_corpus, hashtags_file_name, prelabeled_file_name, coocc_file_name):
     collected_tags = aggregate_from_corpus(sub_corpus, 
                                     init_func=lambda : [], 
                                     agg_func=lambda collected, file_path: collected+[collect_tags(file_path)], 
@@ -58,30 +59,82 @@ def collect_hashtags(sub_corpus, hashtags_file_name):
         .str.encode('ascii', errors='ignore').str.decode('utf-8').str.split(', ')
     
     frequency_df = collected_tags.explode('hashtags')
+    ensure_path_exists(hashtags_file_name)
     frequency_df[frequency_df['hashtags'].str.len()>1].groupby('hashtags')['hashtags']\
         .count().sort_values(ascending=False).to_csv(hashtags_file_name)
     del frequency_df
     print(f'Saved hashtag frequency data to "{hashtags_file_name}"')
     collected_tags=collected_tags[collected_tags['hashtags'].str.len() > 1].reset_index(drop=True)
-    coocc_mat, coocc_mat_index = generate_co_occurrence_matrix(collected_tags, hashtags_file_name.replace('.csv', '_classificado.xlsx'))
-    coocc_file_name = hashtags_file_name.replace('.csv', '_coocc.npz')
+    coocc_mat, coocc_mat_index = generate_co_occurrence_matrix(collected_tags, prelabeled_file_name)
+    ensure_path_exists(coocc_file_name)
     s_coocc_mat = to_indexed_sparse(coocc_mat, coocc_mat_index, coocc_mat_index)
     with open(coocc_file_name, mode='wb') as isparse_file:
         isparse_file.write(s_coocc_mat.getbuffer())
     print(f'Saved hashtag co-occurrence data to "{coocc_file_name}"')
 
-def main():   
+def main():
+    parser = ArgumentParser(
+      description="A script to collect the hashtags from the runnoffs substet and build a hashtag cooccurrence matrix for each candidate"
+    )
+    parser.add_argument(
+      "corpus_path",
+      type=str,
+      help="Path to the root folder of the corpus (ITED-br)"
+    )
+    parser.add_argument(
+      "lula_hashtags_output",
+      type=str,
+      help="Output file path for the lula hashtags (csv)"
+    )
+    parser.add_argument(
+      "bolsonaro_hashtags_output",
+      type=str,
+      help="Output file path for the bolsonaro hashtags (csv)"
+    )
+    parser.add_argument(
+      "lula_prelabeled",
+      type=str,
+      help="Input file path for the prelabeled lula hashtags (xlsx)"
+    )
+    parser.add_argument(
+      "bolsonaro_prelabeled",
+      type=str,
+      help="Input file path for the prelabeled bolsonaro hashtags (xlsx)"
+    )
+    parser.add_argument(
+      "lula_matrix_output",
+      type=str,
+      help="Output file path for the lula matrix (npz)"
+    )
+    parser.add_argument(
+      "bolsonaro_matrix_output",
+      type=str,
+      help="Output file path for the bolsonaro matrix (npz)"
+    )
+    args = parser.parse_args()
+
     target_folders_lula = []
     target_folders_bolsonaro = []
+    corpus = args.corpus_path
     for i in range(3, 31):
-        target_folders_lula.append(f'corpus\\retweets_query_lula\\2022\\10\\{i:02d}\\')
-        target_folders_lula.append(f'corpus\\query_lula\\2022\\10\\{i:02d}\\')
-        target_folders_bolsonaro.append(f'corpus\\retweets_query_bolsonaro\\2022\\10\\{i:02d}\\')
-        target_folders_bolsonaro.append(f'corpus\\query_bolsonaro\\2022\\10\\{i:02d}\\')
+        target_folders_lula.append(join(corpus, 'retweets_query_lula\\2022\\10\\{i:02d}\\'))
+        target_folders_lula.append(join(corpus, 'query_lula\\2022\\10\\{i:02d}\\'))
+        target_folders_bolsonaro.append(corpus, join('retweets_query_bolsonaro\\2022\\10\\{i:02d}\\'))
+        target_folders_bolsonaro.append(corpus, join('query_bolsonaro\\2022\\10\\{i:02d}\\'))
 
     base_path = get_script_path()
-    collect_hashtags(target_folders_lula, base_path+'hashtags\\hashtags_lula.csv')
-    collect_hashtags(target_folders_bolsonaro, base_path+'hashtags\\hashtags_bolsonaro.csv')
+    collect_hashtags(
+        target_folders_lula, 
+        join(base_path, args.lula_hashtags_output), 
+        args.lula_prelabeled, 
+        join(base_path, args.lula_matrix_output)
+    )
+    collect_hashtags(
+        target_folders_bolsonaro, 
+        join(base_path, args.bolsonaro_hashtags_output), 
+        args.bolsonaro_prelabeled, 
+        join(base_path, args.bolsonaro_matrix_output)
+    )
 
 if __name__ == "__main__":
     main()

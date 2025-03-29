@@ -1,5 +1,7 @@
-from corpus import aggregate_from_corpus, get_script_path
+from corpus import aggregate_from_corpus, get_script_path, ensure_path_exists
 import pandas as pd
+from argparse import ArgumentParser
+from os.path import join
 
 def collect_tags(path):
     new_hashtags = pd.read_parquet(path, columns=['hashtags', 'author_id', 'id'])
@@ -28,23 +30,51 @@ def classify_users_by_hashtags(sub_corpus, input_classification_file_name, outpu
     collected_tags.drop('categoria', axis=1, inplace=True)
     collected_tags=(collected_tags[['author_id', 'weight']].groupby('author_id').sum()['weight']/collected_tags[['author_id', 'count']].groupby('author_id').sum()['count'])
 
+    ensure_path_exists(output_classification_file_name)
     pd.concat({'ideology_score': collected_tags, 'tweet_count': tweet_counts}, axis=1, join='inner').to_csv(output_classification_file_name)
     print(f'Saved user classification data to "{output_classification_file_name}"')
 
 def main():
+    parser = ArgumentParser(
+      description="A script to apply the frequency that each hashtag appears in the corpus subset as node size in the hashtag graph, while also adjusting the visibility of the edges that connect hashtag nodes, accordingly, for visualization"
+    )
+    parser.add_argument(
+      "corpus_path",
+      type=str,
+      help="Path to the root folder of the corpus (ITED-br)"
+    )
+    parser.add_argument(
+      "lula_labeled_hashtags",
+      type=str,
+      help="Input file path for the labeled lula hashtags (csv)"
+    )
+    parser.add_argument(
+      "bolsonaro_labeled_hashtags",
+      type=str,
+      help="Input file path for the labeled bolsonaro hashtags (csv)"
+    )
+    parser.add_argument(
+      "lula_classification_output",
+      type=str,
+      help="Output file path for the classified users (regarding lula) (csv)"
+    )
+    parser.add_argument(
+      "bolsonaro_classification_output",
+      type=str,
+      help="Output file path for the classified users (regarding bolsonaro) (csv)"
+    )
+    args = parser.parse_args()
     target_folders_lula = []
     target_folders_bolsonaro = []
+    corpus = args.corpus_path
     for i in range(3, 31):
-        target_folders_lula.append(f'corpus\\query_lula\\2022\\10\\{i:02d}\\')
-        #target_folders_lula.append(f'corpus\\retweets_query_lula\\2022\\10\\{i:02d}\\')
-        target_folders_bolsonaro.append(f'corpus\\query_bolsonaro\\2022\\10\\{i:02d}\\')
-        #target_folders_bolsonaro.append(f'corpus\\retweets_query_bolsonaro\\2022\\10\\{i:02d}\\')
-
+        target_folders_lula.append(join(corpus, 'query_lula\\2022\\10\\{i:02d}\\'))
+        target_folders_bolsonaro.append(join(corpus, 'query_bolsonaro\\2022\\10\\{i:02d}\\'))
     base_path = get_script_path()
-    classify_users_by_hashtags(target_folders_lula, base_path+'hashtags\\label_spreading\\hashtags_lula_classificado_ls.csv', 
-                        base_path+'\\usuarios\\usuarios_classificados\\usuarios_lula_classificados.csv')
-    classify_users_by_hashtags(target_folders_bolsonaro, base_path+'hashtags\\label_spreading\\hashtags_bolsonaro_classificado_ls.csv', 
-                        base_path+'\\usuarios\\usuarios_classificados\\usuarios_bolsonaro_classificados.csv')
+    classify_users_by_hashtags(target_folders_lula, args.lula_labeled_hashtags, 
+                        join(base_path, args.lula_classification_output))
+    classify_users_by_hashtags(target_folders_bolsonaro, args.bolsonaro_labeled_hashtags, 
+                        join(base_path, args.bolsonaro_classification_output))
 
 if __name__ == "__main__":
     main()
