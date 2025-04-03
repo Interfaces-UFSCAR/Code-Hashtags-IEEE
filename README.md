@@ -1,4 +1,4 @@
-# Code-Hashtags-IEEE
+# Code-Hashtags-Journal of Computational Social Science
 Repository with the code related to the article publication, regarding the construction and labeling of the ITED-Br hashtags Graph (runoffs); and the following user ideology score calculation based on the labeled graph.
 
 The study ran this code togethr with a local copy of the hydrated ITED-Br dataset. More specifically, it targeted a political context which is cointained by thataset, the 2022 Brasilian presidential elections runoffs.
